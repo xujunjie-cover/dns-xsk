@@ -1,0 +1,21 @@
+#include "common.h"
+#include <linux/bpf.h>
+#include <bpf_endian.h>
+#include <bpf_helpers.h>
+
+#define MAX_SOCKS 32
+
+struct {
+    __uint(type, BPF_MAP_TYPE_XSKMAP);
+    __type(key, sizeof(int));
+    __type(value, sizeof(int));
+    __uint(max_entries, MAX_SOCKS);
+} xsks_map SEC(".maps");
+
+
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __type(key, sizeof(int));
+    __type(value, sizeof(int));
+    __uint(max_entries, MAX_SOCKS);
+} qidconf_map SEC(".maps");
