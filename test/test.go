@@ -6,6 +6,6 @@ import (
 
 
 func main() {
-
-	dns_xsk.Attach("ens256", 1)
+	packetChan := make(chan []byte)
+	dns_xsk.Attach("ens256", 1, packetChan)
 }
