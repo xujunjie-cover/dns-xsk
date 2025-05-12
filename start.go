@@ -1,6 +1,7 @@
 package dns_xsk
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -10,7 +11,7 @@ import (
 	"github.com/xujunjie-cover/dns-xsk/pkg/bpf"
 )
 
-func Attach(linkName string, maxQueue int, packetChan chan []byte) {
+func Attach(linkName string, maxQueue int, packetChan chan []byte, ctx context.Context) {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
 
 	interfaces, err := net.Interfaces()
@@ -112,5 +113,12 @@ func Attach(linkName string, maxQueue int, packetChan chan []byte) {
 				}
 			}
 		}(i)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		}
 	}
 }
