@@ -1,20 +1,17 @@
 package dns_xsk
 
 import (
-	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
 	"time"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/slavc/xdp"
 
 	"github.com/xujunjie-cover/dns-xsk/pkg/bpf"
 )
 
-func Attach(linkName string, maxQueue int) {
+func Attach(linkName string, maxQueue int, packetChan chan []byte) {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
 
 	interfaces, err := net.Interfaces()
@@ -109,8 +106,9 @@ func Attach(linkName string, maxQueue int) {
 					// broadcast address.
 					for i := 0; i < len(rxDescs); i++ {
 						pktData := xsk.GetFrame(rxDescs[i])
-						pkt := gopacket.NewPacket(pktData, layers.LayerTypeEthernet, gopacket.Default)
-						log.Printf("received frame:\n%s%+v", hex.Dump(pktData[:]), pkt)
+						packetChan <- pktData
+						// pkt := gopacket.NewPacket(pktData, layers.LayerTypeEthernet, gopacket.Default)
+						// log.Printf("received frame:\n%s%+v", hex.Dump(pktData[:]), pkt)
 					}
 				}
 			}
