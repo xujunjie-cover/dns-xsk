@@ -7,7 +7,7 @@
 #include "common.h"
 
 
-#define MAX_SOCKS 32
+#define MAX_SOCKS 64
 
 struct bpf_map_def SEC("maps") xsks_map = {
 	.type = BPF_MAP_TYPE_XSKMAP,
