@@ -14,7 +14,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	dns_xsk.Attach("ens256", 1, packetChan, ctx)
+	dns_xsk.Attach("eth0", 63, packetChan, ctx)
 
 	for {
 		select {

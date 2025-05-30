@@ -7,6 +7,11 @@
         "if_ether.h": "c",
         "bpf_endian.h": "c",
         "in.h": "c",
-        "bpf.h": "c"
+        "bpf.h": "c",
+        "stdint.h": "c",
+        "version.h": "c",
+        "ip.h": "c",
+        "stddef.h": "c",
+        "common.h": "c"
     }
 }

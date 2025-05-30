@@ -6,8 +6,6 @@ import (
 	"log"
 	"net"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/slavc/xdp"
 
 	"github.com/xujunjie-cover/dns-xsk/pkg/bpf"
@@ -43,6 +41,12 @@ func Attach(linkName string, maxQueue int, packetChan chan []byte, ctx context.C
 		Sockets: object.XsksMap,
 	}
 
+	// Create a new XDP eBPF program and attach it to our chosen network link.
+	// if protocol == 0 {
+	// 	program, err = xdp.NewProgram(queueID + 1)
+	// } else {
+	// 	program, err = ebpf.NewIPProtoProgram(uint32(protocol), nil)
+	// }
 	defer program.Close()
 	if err := program.Attach(Ifindex); err != nil {
 		fmt.Printf("error: failed to attach xdp program to interface: %v\n", err)
@@ -83,14 +87,15 @@ func Attach(linkName string, maxQueue int, packetChan chan []byte, ctx context.C
 				// Wait for receive - meaning the kernel has
 				// produced one or more descriptors filled with a received
 				// frame onto the Rx ring queue.
-				//log.Printf("waiting for frame(s) to be received...")
+				log.Printf("waiting for frame(s) to be received...")
 				numRx, _, err := xsk.Poll(-1)
 				if err != nil {
 					fmt.Printf("error: %v\n", err)
 					return
 				}
 		
-				//fmt.Printf("received %d frame(s)\n", numRx)
+				fmt.Printf("received %d frame(s)\n", numRx)
+		
 				if numRx > 0 {
 					// Consume the descriptors filled with received frames
 					// from the Rx ring queue.
@@ -101,88 +106,9 @@ func Attach(linkName string, maxQueue int, packetChan chan []byte, ctx context.C
 					// broadcast address.
 					for i := 0; i < len(rxDescs); i++ {
 						pktData := xsk.GetFrame(rxDescs[i])
-						//packetChan <- pktData
-						packet := gopacket.NewPacket(pktData, layers.LayerTypeEthernet, gopacket.Default)
-						
-						ethLayer := packet.Layer(layers.LayerTypeEthernet)
-						ipLayer := packet.Layer(layers.LayerTypeIPv4)
-						udpLayer := packet.Layer(layers.LayerTypeUDP)
-						dnsLayer := packet.Layer(layers.LayerTypeDNS).(*layers.DNS)
-
-						ethReq, _ := ethLayer.(*layers.Ethernet)
-						ipReq, _ := ipLayer.(*layers.IPv4)
-						udpReq, _ := udpLayer.(*layers.UDP)
-
-						replyDNS := &layers.DNS{
-							ID:           dnsLayer.ID, // 匹配请求ID
-							QR:           true,        // 1=回复
-							OpCode:       dnsLayer.OpCode,
-							AA:           true,        // 权威回复
-							ResponseCode: layers.DNSResponseCodeNoErr,
-							QDCount:      1,
-							Questions:    dnsLayer.Questions,
-							Answers: []layers.DNSResourceRecord{
-								{
-									Name:  []byte("www.test.com"), // 需回复的域名
-									Type:  layers.DNSTypeA,
-									Class: layers.DNSClassIN,
-									TTL:   300,
-									IP:    []byte{3,3,3,3}, // 示例IP
-								},
-							},
-						}
-					
-						replyEth := &layers.Ethernet{
-							SrcMAC:       ethReq.DstMAC,
-							DstMAC:       ethReq.SrcMAC,
-							EthernetType: layers.EthernetTypeIPv4,
-						}
-					
-						replyIP := &layers.IPv4{
-							Version:  4,
-							Protocol: layers.IPProtocolUDP,
-							SrcIP:    ipReq.DstIP,
-							DstIP:    ipReq.SrcIP,
-							TTL:      64,
-						}
-					
-						replyUDP := &layers.UDP{
-							SrcPort: udpReq.DstPort,
-							DstPort: udpReq.SrcPort,
-						}
-						replyUDP.SetNetworkLayerForChecksum(replyIP)
-					
-						buf := gopacket.NewSerializeBuffer()
-						opts := gopacket.SerializeOptions{
-							FixLengths:       true,
-							ComputeChecksums: true,
-						}
-					
-						err = gopacket.SerializeLayers(
-							buf,
-							opts,
-							replyEth,
-							replyIP,
-							replyUDP,
-							replyDNS,
-						)
-						if err != nil {
-							panic(err)
-						}
-					
-						frameLen := len(buf.Bytes())
-						descs := xsk.GetDescs(1, false)
-						for i := range descs {
-							frameLen = copy(xsk.GetFrame(descs[i]), buf.Bytes())
-						}
-
-						outdescs := xsk.GetDescs(1, false)
-						outdescs[0].Len = uint32(frameLen)
-						xsk.Transmit(outdescs)
-						_, _, err = xsk.Poll(1)
-						if err != nil {
-							panic(err)
-						}
+						packetChan <- pktData
+						// pkt := gopacket.NewPacket(pktData, layers.LayerTypeEthernet, gopacket.Default)
+						// log.Printf("received frame:\n%s%+v", hex.Dump(pktData[:]), pkt)
 					}
 				}
 			}
